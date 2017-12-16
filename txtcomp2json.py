@@ -120,7 +120,7 @@ def file2dict(chosen_course):
                     soup = BeautifulSoup(file,'html.parser')
                     set_comp_types = soup.findAll("div", {"data-type":True})
                     for comp_type in set_comp_types:
-                        comp_dict = {str(comp_id).zfill(2)+'_'+comp_type['data-type']:{'section': section , 'subsection': subsection, 'unit_idx': comp_file, 'type': comp_type['data-block-type']}}
+                        comp_dict = {str(comp_id).zfill(3)+'_'+comp_type['data-type']:{'section': section , 'subsection': subsection, 'unit_idx': comp_file, 'type': comp_type['data-block-type']}}
                         comp_dict_ls.update(comp_dict)
                         comp_id+=1
                     file.close()
