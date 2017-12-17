@@ -681,9 +681,9 @@ def save_html_to_file(args, selections, all_urls, headers):
 			   
 				if subsection.name == None:
 					subsection.name = 'Untitled'
-				target_subdir = os.path.join(target_dir, clean_filename(subsection.name))
+				target_subdir = os.path.join(target_dir, str(sub_idx).zfill(3)+'-'+ clean_filename(subsection.name))
 				mkdir_p(target_subdir)
-				logging.info('url: '+ str(all_urls[sub_idx]) + ', subsection: ' + str(subsection.name))
+				logging.info('url: '+ str(all_urls[sub_idx]) + ', subsection: ' + str(sub_idx).zfill(3)+ '-' + str(subsection.name))
 				page = get_page_contents(str(all_urls[sub_idx]), headers)
 				#print ("Contents!\n")
 				soup = BeautifulSoup(page, "html.parser")
