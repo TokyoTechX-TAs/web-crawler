@@ -1,0 +1,8 @@
+https://courses.edx.org/courses/course-v1:TokyoTechX+EE101Jx+3T2017/course/
+https://courses.edx.org/courses/course-v1:TokyoTechX+Ethic1Jx+2T2017/course/
+https://courses.edx.org/courses/course-v1:HarvardX+SPU30x+3T2017/course/
+https://courses.edx.org/courses/course-v1:UBCx+HtC1x+2T2017/course/
+https://courses.edx.org/courses/course-v1:HarvardX+GSD1x+1T2017/course/
+https://courses.edx.org/courses/course-v1:TokyoTechX+ARCH101x+3T2016/course/
+https://courses.edx.org/courses/course-v1:TokyoTechX+GeoS101x+2T2016/course/
+https://courses.edx.org/courses/course-v1:TokyoTechX+Bio150x+3T2017/course/
