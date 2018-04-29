@@ -382,6 +382,8 @@ def parse_courses(args, available_courses):
 		logging.error('You must pass the URL of at least one course, check the correct url with --list-courses')
 		exit(ExitCode.MISSING_COURSE_URL)
 
+	#print(args.course_urls)
+	#print (available_courses)
 	selected_courses = [available_course
 						for available_course in available_courses
 						for url in args.course_urls
