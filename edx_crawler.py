@@ -73,7 +73,6 @@ LOGIN_API = BASE_URL + '/login_ajax'
 DASHBOARD = BASE_URL + '/dashboard'
 COURSEWARE_SEL = OPENEDX_SITES['edx']['courseware-selector']
 
-
 #Parse the arguments passed to the program on the command line.
 def parse_args():
 	
@@ -243,6 +242,7 @@ def get_available_sections(url, headers):
 	logging.debug("Extracted sections: " + str(sections))
 	return sections
 
+
 def edx_login(url, headers, username, password):
 	"""
 	Log in user into the openedx website.
@@ -287,7 +287,6 @@ def extract_units(url, headers, file_formats):
 	page = get_page_contents(url, headers)
 	page_extractor = get_page_extractor(url)
 	units = page_extractor.extract_units_from_html(page, BASE_URL, file_formats)
-
 	return units
 
 
@@ -301,9 +300,7 @@ def extract_all_units_in_sequence(urls, headers, file_formats):
 
 	units = [extract_units(url, headers, file_formats) for url in urls]
 	all_units = dict(zip(urls, units))
-
 	return all_units
-
 
 def extract_all_units_in_parallel(urls, headers, file_formats):
 	"""
@@ -319,7 +316,6 @@ def extract_all_units_in_parallel(urls, headers, file_formats):
 	pool.close()
 	pool.join()
 	all_units = dict(zip(urls, units))
-
 	return all_units
 
 
@@ -358,7 +354,6 @@ def _filter_sections(index, sections):
 			pass   # log some info here
 	else:
 		pass  # log some info here
-
 	return sections
 
 
@@ -382,8 +377,6 @@ def parse_courses(args, available_courses):
 		logging.error('You must pass the URL of at least one course, check the correct url with --list-courses')
 		exit(ExitCode.MISSING_COURSE_URL)
 
-	#print(args.course_urls)
-	#print (available_courses)
 	selected_courses = [available_course
 						for available_course in available_courses
 						for url in args.course_urls
@@ -530,8 +523,7 @@ def extract_problem_comp(soup):
     for each_problem_content in tmp:
             
         for s in each_problem_content.findAll(['h1','h2','h3','h4','h5','h6','p','label','legend']):     
-            text+=s.getText()+" "     
-      
+            text+=s.getText()+" " 
         
         ############################ search for type of problem(quiz) ######################################
         #### from obseavation, multichoice & checkbox use the same clase. The difference lie into type of input option
@@ -549,13 +541,12 @@ def extract_problem_comp(soup):
                 type_div_tmp = 'droplist'
             else:
                 type_div_tmp = 'fillblank' 
-        type_div.append(type_div_tmp)   ### append all list of problem types into type_div
+        type_div.append(type_div_tmp)   ## append all list of problem types into type_div
     return text,type_div 
-       
 
+       
 def crawl_units(subsection_page):
 	unit = []
-	#for e_html in subsection_page:
 	tmp=[]
 	idx = 0
 	while tmp is not None:
@@ -565,12 +556,7 @@ def crawl_units(subsection_page):
 	  unit.append(tmp)
 	  idx = idx + 1 
 	unit.remove(None)
-	#print (str(idx-1))
-
-	
 	return unit
-
-
 
 
 def videolen(yt_link):
@@ -584,6 +570,7 @@ def videolen(yt_link):
 		duration = int(timeformat[0])*3600+int(timeformat[1])*60+ int(timeformat[2])
 	return duration
 
+
 def vtt2json(vttfile):
 	t_start_milli = []
 	t_end_milli = []
@@ -591,12 +578,9 @@ def vtt2json(vttfile):
 	for caption in WebVTT().read(vttfile):
 		h,m,s,ms= re.split(r'[\.:]+', caption.start)
 		t_start_milli.append(h*3600*1000+m*60*1000+s*1000+ms)
-		
 		h,m,s,ms= re.split(r'[\.:]+', caption.end)
 		t_end_milli.append(h*3600*1000+m*60*1000+s*1000+ms)
-		
 		text.append(caption.text)
-	
 	dict_obj = dict({"start":t_start_milli,"end":t_end_milli,"text":text})
 	return dict_obj
 
@@ -613,6 +597,7 @@ def YT_transcript(yt_link,key):
 				transcript_raw = vtt2json(vttfile)
 				os.remove(vttfile)
 	return transcript_raw
+
 
 def extract_video_component(args,coursename,headers,soup,section,subsection,unit):	
 	
@@ -687,7 +672,6 @@ def save_html_to_file(args, selections, all_urls, headers):
 				mkdir_p(target_subdir)
 				logging.info('url: '+ str(all_urls[sub_idx]) + ', subsection: ' + str(sub_idx).zfill(3)+ '-' + str(subsection.name))
 				page = get_page_contents(str(all_urls[sub_idx]), headers)
-				#print ("Contents!\n")
 				soup = BeautifulSoup(page, "html.parser")
 
 				#div contains all units (seq_contents_#)
@@ -710,8 +694,6 @@ def save_html_to_file(args, selections, all_urls, headers):
 
 					filename_template_video_json = "seq_contents_"+str(counter) +"_vdo.json"
 					filename_video_json = os.path.join(target_subdir, filename_template_video_json)
-
-
 
 					logging.info('path: '+ str(target_subdir) + ', filename: ' + str(filename))
 
@@ -768,8 +750,6 @@ def save_html_to_file(args, selections, all_urls, headers):
 						file_video_json.writelines(video_dict2json)
 						file_video_json.close()
 						print(filename_video_json + ' of video component was created')
-						
-
 					counter += 1
 
 	save_urls_to_file(prob_type_set,  os.path.join(args.html_dir, coursename,  "all_prob_type.txt"))
@@ -842,10 +822,10 @@ def main():
 	logging.warn('Removed %d duplicated urls from %d in total',
 				 (num_all_urls - num_filtered_urls), num_all_urls)
 
-	#saving html contebt as course unit
+	#saving html content as course unit
 	save_html_to_file(args, selections, all_urls, headers)
 	
-
+	
 if __name__ == '__main__':
 	try:
 		main()
