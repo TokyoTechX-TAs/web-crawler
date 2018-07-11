@@ -560,14 +560,19 @@ def crawl_units(subsection_page):
 
 
 def videolen(yt_link):
-	duration_raw = subprocess.check_output(["youtube-dl",yt_link, "--get-duration"])
-	timeformat = duration_raw.decode("utf-8").split(':')
-	if len(timeformat) == 1:
-		duration = int(timeformat[0])
-	elif len(timeformat) == 2:
-		duration = int(timeformat[0])*60+int(timeformat[1])
-	else:
-		duration = int(timeformat[0])*3600+int(timeformat[1])*60+ int(timeformat[2])
+	duration = 0
+	## error handling when Youtube video is not currently available
+	try:
+		duration_raw = subprocess.check_output(["youtube-dl",yt_link, "--get-duration"])
+		timeformat = duration_raw.decode("utf-8").split(':')
+		if len(timeformat) == 1:
+			duration = int(timeformat[0])
+		elif len(timeformat) == 2:
+			duration = int(timeformat[0])*60+int(timeformat[1])
+		else:
+			duration = int(timeformat[0])*3600+int(timeformat[1])*60+ int(timeformat[2])
+	except subprocess.CalledProcessError as e:
+		print("video link bug: Youtube link is not available")
 	return duration
 
 
@@ -586,16 +591,20 @@ def vtt2json(vttfile):
 
 
 def YT_transcript(yt_link,key):
-	checksub = subprocess.check_output(["youtube-dl",yt_link, "--list-sub"])
 	transcript_raw = ''
-	if 'has no subtitles' not in checksub.decode('utf-8'):
-		lang_ls = list(filter(None, checksub.decode("utf-8").split('Language formats\n')[2].split('\n')))
-		for lang in lang_ls:
-			if key in lang:
-				sub_dl = subprocess.check_output(["youtube-dl", yt_link, "--skip-download", "--write-sub", "--sub-lang", key])
-				vttfile = re.sub(r'\n','',sub_dl.decode('utf-8').split('Writing video subtitles to: ')[1])
-				transcript_raw = vtt2json(vttfile)
-				os.remove(vttfile)
+	## error handling when Youtube video is not currently available
+	try:
+		checksub = subprocess.check_output(["youtube-dl",yt_link, "--list-sub"])
+		if 'has no subtitles' not in checksub.decode('utf-8'):
+			lang_ls = list(filter(None, checksub.decode("utf-8").split('Language formats\n')[2].split('\n')))
+			for lang in lang_ls:
+				if key in lang:
+					sub_dl = subprocess.check_output(["youtube-dl", yt_link, "--skip-download", "--write-sub", "--sub-lang", key])
+					vttfile = re.sub(r'\n','',sub_dl.decode('utf-8').split('Writing video subtitles to: ')[1])
+					transcript_raw = vtt2json(vttfile)
+					os.remove(vttfile)
+	except subprocess.CalledProcessError as e:
+		print ("transcript link bug: Youtube link is not available")
 	return transcript_raw
 
 
