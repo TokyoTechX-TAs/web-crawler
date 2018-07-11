@@ -21,6 +21,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from collections import Counter 
 
 BASE_PATH = 'HTMLs'
+ALL_COURSE = 'all_course'
 
 def course_selection():
     
@@ -28,6 +29,7 @@ def course_selection():
     idxs_ls = []
     course_ls = []
     print ('list of downloaded courses')
+    print ('0 : All Courses')
     for idx,course in enumerate(courses):
         course_ls.append(course)
         idxs_ls.append(str(idx+1))
@@ -39,10 +41,12 @@ def course_selection():
             flag = 1
             chosen_course = course_ls[int(chosen_course_id)-1]
             print (chosen_course + '\n')
+        elif (chosen_course_id=='0'):
+            flag = 1
+            chosen_course = ALL_COURSE
         else:
             print ('wrong course id. Try again!!!!!!!!')
     return chosen_course
-
 
 def check_true_dir(selected_dir):
     if os.path.isdir(selected_dir):
@@ -169,9 +173,21 @@ def file2dict(chosen_course):
     file_txt.writelines(corpus)
     file_txt.close()
 
+def main_menu(chosen_course):
+    if (chosen_course==ALL_COURSE):
+        print ('All courses are processed\n')
+        #loop
+        courses = os.listdir(BASE_PATH) 
+        for c in courses:
+            print (c+' is processed\n')
+            file2dict(c)
+    else:
+        print (chosen_course+' is processed\n')
+        #dir base path
+        file2dict(chosen_course)
 
 def main(): 
-    file2dict(course_selection())
+    main_menu(course_selection())
 
 
 if __name__ == '__main__':

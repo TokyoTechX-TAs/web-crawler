@@ -360,31 +360,43 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
 
         def _get_section_name(section_soup):  # FIXME: Extract from here and test
             try:
-                return section_soup.div.h3.string
+                #return section_soup.div.h3.string#error was here
+                return section_soup.h3.string#error was here
             except AttributeError:
                 return None
 
         def _make_subsections(section_soup):
             try:
-                subsections_soup = section_soup.find_all('li', class_='subsection')
+                subsections_soup = section_soup.find_all('li', class_="subsection accordion ")#error was here
+    
             except AttributeError:
                 return []
             # FIXME correct extraction of subsection.name (unicode)
+
             subsections = [SubSection(position=i,
                                       url=s.a['href'],
-                                      name=s.a.div.span.span.get_text(strip=True))
+                                      name=s.find('span', {'class' : 'subsection-title'}).get_text(strip=True))
                            for i, s in enumerate(subsections_soup, 1)]
 
             return subsections
 
         soup = BeautifulSoup(page)
-        sections_soup = soup.find_all('li', class_='section')
+        sections_soup = soup.find_all('li', class_='outline-item section')
 
         sections = [Section(position=i,
                             name=_get_section_name(section_soup),
                             url=_make_url(section_soup),
                             subsections=_make_subsections(section_soup))
                     for i, section_soup in enumerate(sections_soup, 1)]
+
+        '''  
+        #To check section names         
+        for i, section_soup in enumerate(sections_soup, 1):
+            print (i)
+            print (_get_section_name(section_soup))
+            print (_make_url(section_soup)) # is None by default 
+        '''
+
         # Filter out those sections for which name could not be parsed
         sections = [section for section in sections
                     if section.name]
