@@ -367,17 +367,18 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
 
         def _make_subsections(section_soup):
             try:
-                subsections_soup = section_soup.find_all('li', class_="subsection accordion ")#error was here
+                subsections_soup = section_soup.find_all('li', class_=["subsection accordion ","subsection accordion current"])#error was here
     
             except AttributeError:
                 return []
             # FIXME correct extraction of subsection.name (unicode)
-
+            
+            # corrected extraction of subsection.name 11 July 2018
             subsections = [SubSection(position=i,
                                       url=s.a['href'],
-                                      name=s.find('span', {'class' : 'subsection-title'}).get_text(strip=True))
+                                      name=s.find('div', {'class' : 'vertical-title'}).get_text(strip=True))
                            for i, s in enumerate(subsections_soup, 1)]
-
+            
             return subsections
 
         soup = BeautifulSoup(page)
