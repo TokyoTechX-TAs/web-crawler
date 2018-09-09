@@ -376,7 +376,7 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
             # corrected extraction of subsection.name 11 July 2018
             subsections = [SubSection(position=i,
                                       url=s.a['href'],
-                                      name=s.find('div', {'class' : 'vertical-title'}).get_text(strip=True))
+                                      name=s.find('h4', {'class' : 'subsection-title'}).get_text(strip=True))
                            for i, s in enumerate(subsections_soup, 1)]
             
             return subsections
