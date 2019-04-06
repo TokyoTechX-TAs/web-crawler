@@ -24,7 +24,7 @@ Run a python script `edx_crawler.py` passing edx course link `-url` , username `
 	-d, --html-dir			Specify directory to store data
 	
 
-The output contents are accumulated and stored in .json format as the following:
+The output contents are stored in .json format as the following:
 
 * all text components -> all_textcomp.json
 * all problem components -> all_probcomp.json
