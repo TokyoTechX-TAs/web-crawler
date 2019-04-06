@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# November 2017. OEDO Analytics Group
+# April 2019. OEDO Analytics Group
 #
 # Main module for crawling text, quiz and video components using edx-dl downloader. 
 # Original source code is modified from: https://github.com/coursera-dl/edx-dl/blob/master/edx_dl/edx_dl.py
@@ -18,6 +18,10 @@ import sys
 import string
 import codecs
 import subprocess
+import pandas as pd
+import tarfile
+import shutil
+
 
 from webvtt import WebVTT
 from datetime import datetime
@@ -511,43 +515,43 @@ def save_urls_to_file(urls, filename):
 
 def extract_problem_comp(soup):
 
-    tmp = []
-    problem_flag = soup.findAll("div", {"data-block-type": "problem"})  ## filter problem component
-    for problem_comp in problem_flag:
-        dict_soup = problem_comp.find(attrs={"data-content":True}).attrs    ## search no-html parser part
-        txt2html = BeautifulSoup(dict_soup["data-content"],'html.parser')       
-        dict_soup["data-content"] = BeautifulSoup(txt2html.prettify(formatter=None),'html.parser') ## restore html parser 
-        tmp.append( dict_soup["data-content"])    ## save each problem component in list 
-    type_div = []
-    text = ''
-    for each_problem_content in tmp:
-            
-        for s in each_problem_content.findAll(['h1','h2','h3','h4','h5','h6','p','label','legend']):     
-            text+=s.getText()+" " 
-        
-        ############################ search for type of problem(quiz) ######################################
-        #### from obseavation, multichoice & checkbox use the same clase. The difference lie into type of input option
-        ####                   fillblank & droplist use the same clase but different subclass
-        #### class has two attribute located at the 4th layer ('div'), with attribute ['class'][<class> <subclass>]  
-        type_div_tmp = each_problem_content.findAll('div')[4]['class'][0]        
-        if type_div_tmp == 'choicegroup':    
-            multi_or_check = each_problem_content.findAll('input')[0].attrs['type']
-            if multi_or_check == 'checkbox':
-                type_div_tmp ='checkbox'
-            else:
-                type_div_tmp = 'multichoice' 
-        elif type_div_tmp == 'inputtype':
-            if each_problem_content.findAll('div')[4]['class'][1] == 'option-input':
-                type_div_tmp = 'droplist'
-            else:
-                type_div_tmp = 'fillblank' 
-        type_div.append(type_div_tmp)   ## append all list of problem types into type_div
-    return text,type_div 
-
-       
+	tmp = []
+	problem_flag = soup.findAll("div", {"data-block-type": "problem"})  ## filter problem component
+	for problem_comp in problem_flag:
+		dict_soup = problem_comp.find(attrs={"data-content":True}).attrs    ## search no-html parser part
+		txt2html = BeautifulSoup(dict_soup["data-content"],'html.parser')       
+		dict_soup["data-content"] = BeautifulSoup(txt2html.prettify(formatter=None),'html.parser') ## restore html parser 
+		tmp.append( dict_soup["data-content"])    ## save each problem component in list 
+	type_div = []
+	text = ''
+	for each_problem_content in tmp:
+			
+		for s in each_problem_content.findAll(['h1','h2','h3','h4','h5','h6','p','label','legend']):     
+			text+=s.getText()+" " 
+		
+		############################ search for type of problem(quiz) ######################################
+		#### from obseavation, multichoice & checkbox use the same clase. The difference lie into type of input option
+		####                   fillblank & droplist use the same clase but different subclass
+		#### class has two attribute located at the 4th layer ('div'), with attribute ['class'][<class> <subclass>]  
+		type_div_tmp = each_problem_content.findAll('div')[4]['class'][0]        
+		if type_div_tmp == 'choicegroup':    
+			multi_or_check = each_problem_content.findAll('input')[0].attrs['type']
+			if multi_or_check == 'checkbox':
+				type_div_tmp ='checkbox'
+			else:
+				type_div_tmp = 'multichoice' 
+		elif type_div_tmp == 'inputtype':
+			if each_problem_content.findAll('div')[4]['class'][1] == 'option-input':
+				type_div_tmp = 'droplist'
+			else:
+				type_div_tmp = 'fillblank' 
+		type_div.append(type_div_tmp)   ## append all list of problem types into type_div
+	return text,type_div 
+	   
 def crawl_units(subsection_page):
 	unit = []
 	tmp=[]
+	unit_name =[]
 	idx = 0
 	while tmp is not None:
 	  id_name = "seq_contents_"+str(idx)
@@ -582,9 +586,9 @@ def vtt2json(vttfile):
 	text = []
 	for caption in WebVTT().read(vttfile):
 		h,m,s,ms= re.split(r'[\.:]+', caption.start)
-		t_start_milli.append(h*3600*1000+m*60*1000+s*1000+ms)
+		t_start_milli.append(int(h)*3600*1000+int(m)*60*1000+int(s)*1000+int(ms))
 		h,m,s,ms= re.split(r'[\.:]+', caption.end)
-		t_end_milli.append(h*3600*1000+m*60*1000+s*1000+ms)
+		t_end_milli.append(int(h)*3600*1000+int(m)*60*1000+int(s)*1000+int(ms))
 		text.append(caption.text)
 	dict_obj = dict({"start":t_start_milli,"end":t_end_milli,"text":text})
 	return dict_obj
@@ -608,6 +612,15 @@ def YT_transcript(yt_link,key):
 	return transcript_raw
 
 
+def extract_speech_period(start_ls,end_ls):
+	period_ls = []
+	for start_time,end_time in zip(start_ls,end_ls):
+		tmp_period = (int(end_time) - int(start_time))/1000
+		period_ls.append(tmp_period)
+	return period_ls
+
+
+
 def extract_video_component(args,coursename,headers,soup,section,subsection,unit):	
 	
 	video_flag = soup.findAll("div", {"data-block-type": "video"})
@@ -619,8 +632,11 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 		yt_id = re.sub(r"1.00:", '', txt2dict['streams'])
 		yt_link = 'https://youtu.be/'+ yt_id
 		duration = videolen(yt_link)
+		if duration == 0:
+			duration = txt2dict['duration']
+			
 
-		video_meta.update({'section': section , 'subsection': subsection, 'unit_idx': unit, 'youtube_url':yt_link, 'video_duration':duration})
+		video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link, 'video_duration':duration})
 		for key, value in txt2dict['transcriptLanguages'].items():
 			transcript_name = 'transcript_'+ key
 			transcript_url = 'https://courses.edx.org/' + re.sub(r"__lang__",key, txt2dict['transcriptTranslationUrl']) 
@@ -629,11 +645,13 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 				transcript_dump = get_page_contents(transcript_url, headers)
 				transcript_raw = json.loads(transcript_dump)
 				#print (transcript_raw)
-				video_meta.update({transcript_name:transcript_raw['text']})
+				speech_period = extract_speech_period(transcript_raw['start'],transcript_raw['end'])
+		
+				video_meta.update({transcript_name:transcript_raw['text'],'speech_period':speech_period})
 			except (HTTPError,URLError) as exception:
 				print('     bug: cannot download from edx site')
-				transcript_dump = YT_transcript(yt_link,key)
-				if len(transcript_dump) == 0:
+				transcript_raw = YT_transcript(yt_link,key)
+				if len(transcript_raw) == 0:
 					print('     no transcript available on YouTube')
 					video_meta.update({transcript_name:{"start":'',"end":'',"text":''}})
 					logging.warn('transcript (error: %s)', exception)
@@ -651,10 +669,13 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 					f.close()
 				else:
 					print('     transcript was successfuly downloaded from YouTube')
-					video_meta.update({transcript_name:transcript_dump['text']})
+					speech_period = extract_speech_period(transcript_raw['start'],transcript_raw['end'])
+					video_meta.update({transcript_name:transcript_raw['text'],'speech_period':speech_period})
 
 		video_meta_list.append(video_meta)
 	return video_meta_list
+
+
 
 
 def save_html_to_file(args, selections, all_urls, headers):
@@ -662,49 +683,52 @@ def save_html_to_file(args, selections, all_urls, headers):
 	sub_idx = 0
 	prob_type_set = []
 	counter_video = 1
-
+	counter_unit = 1
+	txt_id = 1
+	prob_id = 1
+	video_id =  1
+	comp_id = 1
+	tmp_course_strut = dict()
+	txt_dict_ls = dict()
+	prob_dict_ls = dict()
+	comp_dict_ls = dict()
+	video_dict_ls = dict()
 	for selected_course, selected_sections in selections.items():
 		coursename = directory_name(selected_course.name)
+		sourcepath = os.path.join(args.html_dir, coursename,'source_html_file')
+		mkdir_p(sourcepath)
+		#filename_meta = os.path.join(sourcepath, 'html_metadata.csv')
 		
+		metasec_ls = [[],[],[],[]]
 		for selected_section in selected_sections:
 			section_dirname = "%02d-%s" % (selected_section.position,
 										   selected_section.name)
-			target_dir = os.path.join(args.html_dir, coursename,
-									  clean_filename(section_dirname))
-			mkdir_p(target_dir)
-			
+			tmp_course_strut['section'] = (section_dirname)
+
 			for subsection in selected_section.subsections:
 			   
 				if subsection.name == None:
 					subsection.name = 'Untitled'
-				target_subdir = os.path.join(target_dir, str(sub_idx).zfill(3)+'-'+ clean_filename(subsection.name))
-				mkdir_p(target_subdir)
-				logging.info('url: '+ str(all_urls[sub_idx]) + ', subsection: ' + str(sub_idx).zfill(3)+ '-' + str(subsection.name))
+
+			
+				tmp_course_strut['subsection'] = (subsection.name)
+				#logging.info('url: '+ str(all_urls[sub_idx]) )
+				print(all_urls[sub_idx])
 				page = get_page_contents(str(all_urls[sub_idx]), headers)
 				soup = BeautifulSoup(page, "html.parser")
 
 				#div contains all units (seq_contents_#)
 				main_content=soup.find("div", {"class": "container"})
 
-				units = crawl_units(main_content)
-				counter = 0
+				units = crawl_units(main_content)		
+
 				sub_idx = sub_idx+1
 
-				for unit in units:
+				for idx,unit in enumerate(units):
 					
-					filename_template = "seq_contents_"+str(counter) +".html"
-					filename = os.path.join(target_subdir, filename_template)
+					filename_template = str(counter_unit).zfill(4) +".html"
+					filename = os.path.join(args.html_dir, coursename,'source_html_file', filename_template)
 
-					filename_template_txt = "seq_contents_"+str(counter) +".txt"
-					filename_txt = os.path.join(target_subdir, filename_template_txt)
-
-					filename_template_prob_txt = "seq_contents_"+str(counter) +"_prob.txt"
-					filename_prob_txt = os.path.join(target_subdir, filename_template_prob_txt)
-
-					filename_template_video_json = "seq_contents_"+str(counter) +"_vdo.json"
-					filename_video_json = os.path.join(target_subdir, filename_template_video_json)
-
-					logging.info('path: '+ str(target_subdir) + ', filename: ' + str(filename))
 
 					try:
 						file_ = sys.stdout if filename == '-' else codecs.open( filename, 'w', 'utf-8')
@@ -718,51 +742,113 @@ def save_html_to_file(args, selections, all_urls, headers):
 					file_.writelines(unit.prettify(formatter=None))
 					file_.close()
 
+					
+					
 					soup =unit.prettify(formatter=None)
 					soup = BeautifulSoup(soup, "html.parser")
+
+
+					cur_unit = soup.find("h2",{"class": "hd hd-2 unit-title"}).getText()
+					if cur_unit == None:
+						cur_unit = 'Untitled'
+					tmp_course_strut['unit'] = (cur_unit)
+
+					logging.info('section: ' + tmp_course_strut['section'])
+					logging.info('     subsection: ' + tmp_course_strut['subsection'])
+					logging.info('                unit: ' + tmp_course_strut['unit'])
 					
+
+					metasec_ls[0].append(tmp_course_strut['section'])
+					metasec_ls[1].append(tmp_course_strut['subsection'])
+					metasec_ls[2].append(tmp_course_strut['unit'])
+					metasec_ls[3].append(filename_template)
+					
+				
 					# select only html componert (disregard video, problem)
 					html_flag = soup.findAll("div", {"data-block-type": "html"})
 					if len(html_flag) > 0:
 					
 						#create file only when html component exists
-						file_txt = sys.stdout if filename_txt == '-' else codecs.open( filename_txt, 'w', 'utf-8')
 						text=""
 						for soup_component in html_flag:					
 							for s in soup_component.findAll(['h1','h2','h3','h4','h5','h6','p','li']):
 								text+=s.getText()+" "                               		
+				
 
-						file_txt.writelines(text)
-						file_txt.close()
-						print(filename_txt + ' of text component was created')
+						tmp_dict = {'text_block_'+str(txt_id).zfill(4):{'section': tmp_course_strut['section'] , 'subsection': tmp_course_strut['subsection'], 'unit': tmp_course_strut['unit'], 'content':text}}
+						txt_dict_ls.update(tmp_dict)
+						txt_id +=1
+						
 
 					# select only problem componert (disregard video, text)
 					prob_txt,prob_types = extract_problem_comp(soup)
 					
 					if len(prob_txt) > 0:
-						file_prob_txt = sys.stdout if filename == '-' else codecs.open( filename_prob_txt, 'w', 'utf-8')
 						for prob_type in prob_types:
 							prob_type_set.append(prob_type+' \n')
 						
-						file_prob_txt.writelines(prob_txt)
-						file_prob_txt.close()
-						print(filename_prob_txt + ' of problem component was created')
+						tmp_dict = {'quiz_block_'+str(prob_id).zfill(4):{'section': tmp_course_strut['section']  , 'subsection': tmp_course_strut['subsection'], 'unit': tmp_course_strut['unit'], 'content':prob_txt}}
+						prob_dict_ls.update(tmp_dict)
+						#print(tmp_dict)
+						prob_id +=1
 
-					tmp_video_dict = extract_video_component(args,coursename,headers,soup,clean_filename(section_dirname),clean_filename(subsection.name),"seq_contents_"+str(counter))
+					tmp_video_dict = extract_video_component(args,coursename,headers,soup,tmp_course_strut['section'],tmp_course_strut['subsection'],tmp_course_strut['unit'])
 					if len(tmp_video_dict) > 0:
-						file_video_json = sys.stdout if filename == '-' else codecs.open( filename_video_json, 'w', 'utf-8')
 						video_unit_dict = dict()
 						for vd in tmp_video_dict:
-							video_unit_dict.update({"video_block_"+str(counter_video).zfill(2):vd})
+							video_unit_dict.update({"video_block_"+str(counter_video).zfill(4):vd})
 							counter_video +=1
-						video_dict2json = json.dumps(video_unit_dict, sort_keys=False, indent=4, separators=(',', ': '))
-						file_video_json.writelines(video_dict2json)
-						file_video_json.close()
-						print(filename_video_json + ' of video component was created')
-					counter += 1
+
+						video_dict_ls.update(video_unit_dict)
+						video_id +=1
+
+					counter_unit += 1
+
+					set_comp_types = soup.findAll("div", {"data-type":True})
+					for comp_type in set_comp_types:
+						comp_dict = {str(comp_id).zfill(4)+'_'+comp_type['data-type']:{'section': tmp_course_strut['section']  , 'subsection': tmp_course_strut['subsection'], 'unit': tmp_course_strut['unit'], 'type': comp_type['data-block-type']}}
+						comp_dict_ls.update(comp_dict)
+						comp_id+=1
+
+	txt_dict2json = json.dumps(txt_dict_ls, sort_keys=True, indent=4, separators=(',', ': '))
+	prob_dict2json = json.dumps(prob_dict_ls, sort_keys=True, indent=4, separators=(',', ': '))
+	video_dict2json = json.dumps(video_dict_ls, sort_keys=True, indent=4, separators=(',', ': '))
+	comp_dict2json = json.dumps(comp_dict_ls, sort_keys=True, indent=4, separators=(',', ': '))
+
+	with open(os.path.join(args.html_dir, coursename,'all_textcomp.json'),'w',encoding='utf-8') as f:
+		f.write(txt_dict2json)
+
+	with open(os.path.join(args.html_dir, coursename,'all_probcomp.json'),'w',encoding='utf-8') as f:
+		f.write(prob_dict2json)
+
+	with open(os.path.join(args.html_dir, coursename,'all_videocomp.json'),'w',encoding='utf-8') as f:
+		f.write(video_dict2json)
+	
+	with open(os.path.join(args.html_dir, coursename,'all_comp.json'),'w',encoding='utf-8') as f:
+		f.write(comp_dict2json)
+
+	metafile_dict = {'section':metasec_ls[0],'subsection':metasec_ls[1],'unit':metasec_ls[2],'htmlfile':metasec_ls[3]}
+	df = pd.DataFrame.from_dict(metafile_dict)
+	df.to_csv(os.path.join(args.html_dir, coursename,'source_html_file','metadata.csv'))
+	
+
 
 	save_urls_to_file(prob_type_set,  os.path.join(args.html_dir, coursename,  "all_prob_type.txt"))
+	make_tarfile(os.path.join(args.html_dir, coursename,'sourcefile.tar.gz'),os.path.join(args.html_dir, coursename,'source_html_file'))
+
+
+
+def make_tarfile(zip_path,sourcedir):
+
+	print ("source file is being compressed as tar.gz ")
+	with tarfile.open(zip_path, 'w:gz') as tar:
+		for f in os.listdir(sourcedir):
+			tar.add(sourcedir + "/" + f, arcname=os.path.basename(f))
+		tar.close()
+	shutil.rmtree(sourcedir)
 	
+
+
 
 def main():
 
@@ -833,7 +919,7 @@ def main():
 
 	#saving html content as course unit
 	save_html_to_file(args, selections, all_urls, headers)
-	
+		
 	
 if __name__ == '__main__':
 	try:
