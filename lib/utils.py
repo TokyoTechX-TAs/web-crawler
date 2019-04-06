@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import string
+import html
 import subprocess
 
 
@@ -120,7 +121,7 @@ def clean_filename(s, minimal_change=False):
 
     # First, deal with URL encoded strings
     h = html_parser.HTMLParser()
-    s = h.unescape(s)
+    s = html.unescape(s)
 
     # strip paren portions which contain trailing time length (...)
     s = (
