@@ -21,7 +21,7 @@ import subprocess
 import pandas as pd
 import tarfile
 import shutil
-
+import ffmpeg
 
 from webvtt import WebVTT
 from datetime import datetime
@@ -619,7 +619,17 @@ def extract_speech_period(start_ls,end_ls):
 		period_ls.append(tmp_period)
 	return period_ls
 
-
+def extract_duration_from_non_YT_video(source_mp4,headers):
+	file_name = 'trial_video.mp4' 
+	#print(source_mp4)
+	rsp = urlopen(Request(source_mp4, None, headers))
+	with open(file_name,'wb') as f:
+		f.write(rsp.read())
+	probe = ffmpeg.probe(file_name)
+	duration = probe['streams'][1]['duration']
+	os.remove(file_name)
+	#print(probe)
+	return(duration)
 
 def extract_video_component(args,coursename,headers,soup,section,subsection,unit):	
 	
@@ -630,17 +640,32 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 		txtjson = video_comp.find('div',{"data-metadata":True})['data-metadata']
 		txt2dict = json.loads(txtjson)
 		yt_id = re.sub(r"1.00:", '', txt2dict['streams'])
-		yt_link = 'https://youtu.be/'+ yt_id
-		duration = videolen(yt_link)
-		if duration == 0:
+		if len(txt2dict['streams']) == 0:
 			duration = txt2dict['duration']
-			
+			yt_link = 'n/a'
+			video_source = [i for i in txt2dict['sources'] if i.endswith('mp4')]
+			if duration == 0:
+				try:
+					duration = extract_duration_from_non_YT_video(video_source[0],headers)
+				except (HTTPError,URLError) as exception:
+					print('     bug: cannot download video from edx site')
+					duration = 'n/a'
+		else:
+			yt_link = 'https://youtu.be/'+ yt_id
+			duration = videolen(yt_link)
+			video_source = 'n/a'
+			if duration == 0:
+				duration = txt2dict['duration']
 
-		video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link, 'video_duration':duration})
+		video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link,'video_source':video_source[0], 'video_duration':duration})
+
 		for key, value in txt2dict['transcriptLanguages'].items():
 			transcript_name = 'transcript_'+ key
 			transcript_url = 'https://courses.edx.org/' + re.sub(r"__lang__",key, txt2dict['transcriptTranslationUrl']) 
-			print('download '+ value + ' transcript of '+ yt_link)
+			if yt_link == 'n/a':
+				print('download '+ value + ' transcript of '+ video_source[0])
+			else:
+				print('download '+ value + ' transcript of '+ yt_link)
 			try:
 				transcript_dump = get_page_contents(transcript_url, headers)
 				transcript_raw = json.loads(transcript_dump)
@@ -649,7 +674,11 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 		
 				video_meta.update({transcript_name:transcript_raw['text'],'speech_period':speech_period})
 			except (HTTPError,URLError) as exception:
+
 				print('     bug: cannot download from edx site')
+				if yt_link == 'n/a':
+					continue
+
 				transcript_raw = YT_transcript(yt_link,key)
 				if len(transcript_raw) == 0:
 					print('     no transcript available on YouTube')
