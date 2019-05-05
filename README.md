@@ -9,6 +9,11 @@ Python libraries and modules:
 * [beautifulsoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-beautiful-soup) - a Python library for pulling data out of HTML and XML files
 * [webvtt-py](https://pypi.python.org/pypi/webvtt-py) -  a Python module for reading/writing WebVTT caption files
 * [youtube-dl](https://github.com/rg3/youtube-dl) - command-line program to download videos from YouTube.com
+* [ffmpeg-python](https://github.com/kkroening/ffmpeg-python) - command-line python wrapper for videos (mpeg) file analysis using ffmpeg software
+
+multimedia framework:
+* [ffmpeg](https://ffmpeg.org/) - command-line program to to record, convert and stream audio and video. 
+
 
 ## How to run
 
