@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# April 2019. OEDO Analytics Group
+# August 2019. OEDO Analytics Group
 #
 # Main module for crawling text, quiz and video components using edx-dl downloader. 
 # Original source code is modified from: https://github.com/coursera-dl/edx-dl/blob/master/edx_dl/edx_dl.py
@@ -229,7 +229,7 @@ def _get_initial_token(url):
 			logging.info('Found CSRF token.')
 			return cookie.value
 
-	logging.warn('Did not find the CSRF token.')
+	logging.warning('Did not find the CSRF token.')
 	return ''
 
 
@@ -442,7 +442,7 @@ def parse_units(all_units):
 	"""
 	flat_units = [unit for units in all_units.values() for unit in units]
 	if len(flat_units) < 1:
-		logging.warn('No downloadable video found.')
+		logging.warning('No downloadable video found.')
 		exit(ExitCode.NO_DOWNLOADABLE_VIDEO)
 
 
@@ -533,18 +533,21 @@ def extract_problem_comp(soup):
 		#### from obseavation, multichoice & checkbox use the same clase. The difference lie into type of input option
 		####                   fillblank & droplist use the same clase but different subclass
 		#### class has two attribute located at the 4th layer ('div'), with attribute ['class'][<class> <subclass>]  
-		type_div_tmp = each_problem_content.findAll('div')[4]['class'][0]        
-		if type_div_tmp == 'choicegroup':    
-			multi_or_check = each_problem_content.findAll('input')[0].attrs['type']
-			if multi_or_check == 'checkbox':
-				type_div_tmp ='checkbox'
-			else:
-				type_div_tmp = 'multichoice' 
-		elif type_div_tmp == 'inputtype':
-			if each_problem_content.findAll('div')[4]['class'][1] == 'option-input':
-				type_div_tmp = 'droplist'
-			else:
-				type_div_tmp = 'fillblank' 
+		try:
+			type_div_tmp = each_problem_content.findAll('div')[4]['class'][0]        
+			if type_div_tmp == 'choicegroup':    
+				multi_or_check = each_problem_content.findAll('input')[0].attrs['type']
+				if multi_or_check == 'checkbox':
+					type_div_tmp ='checkbox'
+				else:
+					type_div_tmp = 'multichoice' 
+			elif type_div_tmp == 'inputtype':
+				if each_problem_content.findAll('div')[4]['class'][1] == 'option-input':
+					type_div_tmp = 'droplist'
+				else:
+					type_div_tmp = 'fillblank' 
+		except KeyError:
+			type_div_tmp = 'N/A'
 		type_div.append(type_div_tmp)   ## append all list of problem types into type_div
 	return text,type_div 
 	   
@@ -604,9 +607,11 @@ def YT_transcript(yt_link,key):
 			for lang in lang_ls:
 				if key in lang:
 					sub_dl = subprocess.check_output(["youtube-dl", yt_link, "--skip-download", "--write-sub", "--sub-lang", key])
-					vttfile = re.sub(r'\n','',sub_dl.decode('utf-8').split('Writing video subtitles to: ')[1])
-					transcript_raw = vtt2json(vttfile)
-					os.remove(vttfile)
+					#vttfile = re.sub(r'\n','',sub_dl.decode('utf-8').split('Writing video subtitles to: ')[1])
+					files = os.listdir()
+					vttfile = [name for name in files if name.endswith('vtt')]
+					transcript_raw = vtt2json(vttfile[0])
+					os.remove(vttfile[0])
 	except subprocess.CalledProcessError as e:
 		print ("transcript link bug: Youtube link is not available")
 	return transcript_raw
@@ -675,15 +680,30 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 				video_meta.update({transcript_name:transcript_raw['text'],'speech_period':speech_period})
 			except (HTTPError,URLError) as exception:
 
-				print('     bug: cannot download from edx site')
+				print('     bug: cannot download transcript from edx site')
 				if yt_link == 'n/a':
+					video_meta.update({transcript_name:{"start":'',"end":'',"text":''},'speech_period':'n/a'})
+					logging.warning('transcript (error: %s)', exception)
+					errorlog = os.path.join(args.html_dir,coursename,'transcript_error_report.txt')
+					f = open(errorlog, 'a')
+					text = '---------------------------------\n'\
+					+ 'transcript error: ' + str(exception) +'\n' \
+					+ 'video file: '+ video_source[0] +'\n' \
+					+ 'language: ' + value + '\n' \
+					+ 'section:  ' + section + '\n'\
+					+ 'subsection: ' + subsection + '\n'\
+					+ 'unit_idx: ' + unit + '\n' \
+					+'---------------------------------'
+					f.write(text)
+					f.close()
 					continue
 
+				print('     attempt to download transcript on Youtube')
 				transcript_raw = YT_transcript(yt_link,key)
 				if len(transcript_raw) == 0:
 					print('     no transcript available on YouTube')
-					video_meta.update({transcript_name:{"start":'',"end":'',"text":''}})
-					logging.warn('transcript (error: %s)', exception)
+					video_meta.update({transcript_name:{"start":'',"end":'',"text":''},'speech_period':'n/a'})
+					logging.warning('transcript (error: %s)', exception)
 					errorlog = os.path.join(args.html_dir,coursename,'transcript_error_report.txt')
 					f = open(errorlog, 'a')
 					text = '---------------------------------\n'\
@@ -833,11 +853,12 @@ def save_html_to_file(args, selections, all_urls, headers):
 
 					counter_unit += 1
 
-					set_comp_types = soup.findAll("div", {"data-type":True})
+					set_comp_types = soup.findAll("div", {"data-block-type":True})
 					for comp_type in set_comp_types:
-						comp_dict = {str(comp_id).zfill(4)+'_'+comp_type['data-type']:{'section': tmp_course_strut['section']  , 'subsection': tmp_course_strut['subsection'], 'unit': tmp_course_strut['unit'], 'type': comp_type['data-block-type']}}
-						comp_dict_ls.update(comp_dict)
-						comp_id+=1
+						if comp_type['data-block-type'] in ['html','video','problem']:
+							comp_dict = {str(comp_id).zfill(4)+'_'+comp_type['data-block-type']:{'section': tmp_course_strut['section']  , 'subsection': tmp_course_strut['subsection'], 'unit': tmp_course_strut['unit'], 'type': comp_type['data-block-type']}}
+							comp_dict_ls.update(comp_dict)
+							comp_id+=1
 
 	txt_dict2json = json.dumps(txt_dict_ls, sort_keys=True, indent=4, separators=(',', ': '))
 	prob_dict2json = json.dumps(prob_dict_ls, sort_keys=True, indent=4, separators=(',', ': '))
@@ -943,7 +964,7 @@ def main():
 	filtered_units = remove_repeated_urls(all_units)
 	num_all_urls = num_urls_in_units_dict(all_units)
 	num_filtered_urls = num_urls_in_units_dict(filtered_units)
-	logging.warn('Removed %d duplicated urls from %d in total',
+	logging.warning('Removed %d duplicated urls from %d in total',
 				 (num_all_urls - num_filtered_urls), num_all_urls)
 
 	#saving html content as course unit
@@ -954,5 +975,5 @@ if __name__ == '__main__':
 	try:
 		main()
 	except KeyboardInterrupt:
-		logging.warn("\n\nCTRL-C detected, shutting down....")
+		logging.warning("\n\nCTRL-C detected, shutting down....")
 		sys.exit(ExitCode.OK)
