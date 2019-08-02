@@ -655,15 +655,17 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 				except (HTTPError,URLError) as exception:
 					print('     bug: cannot download video from edx site')
 					duration = 'n/a'
+			video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link,'video_source':video_source[0], 'video_duration':duration})
 		else:
 			yt_link = 'https://youtu.be/'+ yt_id
 			duration = videolen(yt_link)
 			video_source = 'n/a'
 			if duration == 0:
 				duration = txt2dict['duration']
+			video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link,'video_source':video_source, 'video_duration':duration})
 
-		video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link,'video_source':video_source[0], 'video_duration':duration})
 
+		
 		for key, value in txt2dict['transcriptLanguages'].items():
 			transcript_name = 'transcript_'+ key
 			transcript_url = 'https://courses.edx.org/' + re.sub(r"__lang__",key, txt2dict['transcriptTranslationUrl']) 
