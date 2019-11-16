@@ -526,7 +526,7 @@ def extract_problem_comp(soup):
 	text = ''
 	for each_problem_content in tmp:
 			
-		for s in each_problem_content.findAll(['h1','h2','h3','h4','h5','h6','p','label','legend']):     
+		for s in each_problem_content.findAll(['h1','h2','h3','h4','h5','h6','p','label','legend','label','option']):     
 			text+=s.getText()+" " 
 		
 		############################ search for type of problem(quiz) ######################################
