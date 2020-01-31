@@ -380,7 +380,7 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
             subsections = [SubSection(position=i,
                                       url=s.a['href'],
                                       name=s.find('h4', {'class' : 'subsection-title'}).get_text(strip=True))
-                           for i, s in enumerate(subsections_soup, 1)]
+                           for i, s in enumerate(subsections_soup, 1) if s.find('a',href=True)]
             
             return subsections
 
