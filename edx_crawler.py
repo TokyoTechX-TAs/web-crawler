@@ -64,21 +64,7 @@ from lib.utils import (
 	remove_duplicates,
 )
 
-OPENEDX_SITES = {
-	'edx': {
-		'url': 'https://courses.edx.org',
-		'courseware-selector': ('nav', {'aria-label': 'Course Navigation'}),
-	}
-}
 
-BASE_URL = OPENEDX_SITES['edx']['url']
-#EDX_HOMEPAGE = BASE_URL + '/login_ajax'
-EDX_HOMEPAGE = BASE_URL + '/user_api/v1/account/login_session'
-LOGIN_API = BASE_URL + '/login_ajax'
-DASHBOARD = BASE_URL + '/dashboard'
-COURSEWARE_SEL = OPENEDX_SITES['edx']['courseware-selector']
-
-#Parse the arguments passed to the program on the command line.
 def parse_args():
 	
 	parser = argparse.ArgumentParser(prog='edx-crawler',
@@ -182,7 +168,32 @@ def parse_args():
 
 	return args
 
+arg_url = parse_args().course_urls
+print(arg_url)
 
+if arg_url[0].startswith('https://courses.edx.org'):
+	OPENEDX_SITES = {
+		'edx': {
+			'url': 'https://courses.edx.org',
+			'courseware-selector': ('nav', {'aria-label': 'Course Navigation'}),
+		}
+	}
+elif arg_url[0].startswith('https://edge.edx.org'):
+	OPENEDX_SITES = {
+		'edx': {
+			'url': 'https://edge.edx.org',
+			'courseware-selector': ('nav', {'aria-label': 'Course Navigation'}),
+		}
+	}
+
+BASE_URL = OPENEDX_SITES['edx']['url']
+#EDX_HOMEPAGE = BASE_URL + '/login_ajax'
+EDX_HOMEPAGE = BASE_URL + '/user_api/v1/account/login_session'
+LOGIN_API = BASE_URL + '/login_ajax'
+DASHBOARD = BASE_URL + '/dashboard'
+COURSEWARE_SEL = OPENEDX_SITES['edx']['courseware-selector']
+
+#Parse the arguments passed to the program on the command line.
 def _display_courses(courses):
 	"""
 	List the courses that the user has enrolled.
@@ -669,7 +680,7 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 		
 		for key, value in txt2dict['transcriptLanguages'].items():
 			transcript_name = 'transcript_'+ key
-			transcript_url = 'https://courses.edx.org/' + re.sub(r"__lang__",key, txt2dict['transcriptTranslationUrl']) 
+			transcript_url = OPENEDX_SITES['edx']['url'] + re.sub(r"__lang__",key, txt2dict['transcriptTranslationUrl']) 
 			if yt_link == 'n/a':
 				print('download '+ value + ' transcript of '+ video_source[0])
 			else:
