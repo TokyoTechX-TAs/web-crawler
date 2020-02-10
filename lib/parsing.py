@@ -408,7 +408,72 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
 
         return sections
 
+class EdgeEdXPageExtractor(CurrentEdXPageExtractor):
+    """
+    A new page extractor for the latest changes in layout of edx
+    """
 
+    def extract_sections_from_html(self, page, BASE_URL):
+        """
+        Extract sections (Section->SubSection) from the html page
+        """
+        def _make_url(section_soup):  # FIXME: Extract from here and test
+            try:
+                return None
+            except AttributeError:
+                # Section might be empty and contain no links
+                return None
+
+        def _get_section_name(section_soup):  # FIXME: Extract from here and test
+            try:
+                #return section_soup.div.h3.string#error was here
+                return section_soup.h3.string#error was here
+            except AttributeError:
+                return None
+
+        def _make_subsections(section_soup):
+            try:
+                #subsections_soup = section_soup.find_all('li', class_=["subsection accordion ","subsection accordion","subsection accordion current"])#error was here
+                subsections_soup = section_soup.find_all('li', class_=re.compile("^subsection accordion"))#error was here
+                # corrected extraction of subsections_soup 16 November 2019
+            except AttributeError:
+                return []
+            #print(section_soup.find_all('li', class_="subsection accordion"))
+            # FIXME correct extraction of subsection.name (unicode)
+            
+            # corrected extraction of subsection.name 11 July 2018
+
+            subsections = [SubSection(position=i,
+                                      url=s.a['href'],
+                                      name=s.find('h4', {'class' : 'subsection-title'}).get_text(strip=True))
+                           for i, s in enumerate(subsections_soup, 1) if s.find('a',href=True)]
+            
+            return subsections
+
+        soup = BeautifulSoup(page)
+        # sections_soup = soup.find_all('li', class_="outline-item section)
+        sections_soup = soup.find_all('li', class_=re.compile("^outline-item section"))
+        # corrected extraction of sections_soup 16 November 2019
+        sections = [Section(position=i,
+                            name=_get_section_name(section_soup),
+                            url=_make_url(section_soup),
+                            subsections=_make_subsections(section_soup))
+                    for i, section_soup in enumerate(sections_soup, 1)]
+
+        '''  
+        #To check section names         
+        for i, section_soup in enumerate(sections_soup, 1):
+            print (i)
+            print (_get_section_name(section_soup))
+            print (_make_url(section_soup)) # is None by default 
+        '''
+
+        # Filter out those sections for which name could not be parsed
+        sections = [section for section in sections
+                    if section.name]
+
+        return sections
+        
 def get_page_extractor(url):
     """
     factory method for page extractors
@@ -416,8 +481,7 @@ def get_page_extractor(url):
     if url.startswith('https://courses.edx.org'):
         return NewEdXPageExtractor()
     elif url.startswith('https://edge.edx.org'):
-       
-        return CurrentEdXPageExtractor()
+        return EdgeEdXPageExtractor()
     elif url.startswith('https://lagunita.stanford.edu'):
         return CurrentEdXPageExtractor()
     else:
