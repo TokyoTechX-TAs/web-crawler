@@ -699,7 +699,7 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 					video_meta.update({transcript_name:{"start":'',"end":'',"text":''},'speech_period':'n/a'})
 					logging.warning('transcript (error: %s)', exception)
 					errorlog = os.path.join(args.html_dir,coursename,'transcript_error_report.txt')
-					f = open(errorlog, 'a')
+					f = open(errorlog, 'a',encoding='utf-8')
 					text = '---------------------------------\n'\
 					+ 'transcript error: ' + str(exception) +'\n' \
 					+ 'video file: '+ video_source[0] +'\n' \
@@ -719,7 +719,7 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 					video_meta.update({transcript_name:{"start":'',"end":'',"text":''},'speech_period':'n/a'})
 					logging.warning('transcript (error: %s)', exception)
 					errorlog = os.path.join(args.html_dir,coursename,'transcript_error_report.txt')
-					f = open(errorlog, 'a')
+					f = open(errorlog, 'a',encoding='utf-8')
 					text = '---------------------------------\n'\
 					+ 'transcript error: ' + str(exception) +'\n' \
 					+ 'video url: '+ yt_link +'\n' \
